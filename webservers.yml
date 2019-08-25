@@ -1,0 +1,11 @@
+---
+- name: Provision the EC2 Instance
+  hosts: localhost
+  roles:
+    - provision-ec2
+- name: Deploy the webserver
+  hosts: webservers
+  remote_user: ubuntu
+  become: yes
+  roles:
+    - deploy-webserver

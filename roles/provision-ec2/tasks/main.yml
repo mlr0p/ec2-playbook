@@ -1,0 +1,60 @@
+---
+
+- name: Create EC2 Keypair
+  ec2_key:
+    name: "{{ ec2_key_name }}"
+    region: "{{ region }}"
+  register: ec2_key
+
+- name: Save private key
+  copy: content="{{ ec2_key.key.private_key }}" dest="{{ ec2_private_key_dir }}" mode=0600
+  when: ec2_key.changed
+
+- name: Create a security group
+  ec2_group:
+    name: "{{ security_group }}"
+    description: The webserver security group
+    region: "{{ region }}"
+    rules:
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        from_port: 443
+        to_port: 443
+        cidr_ip: 0.0.0.0/0
+    rules_egress:
+      - proto: all
+        cidr_ip: 0.0.0.0/0
+  register: ec2_security_group
+
+- name: Launch EC2 Instance
+  command: "aws ec2 run-instances --image-id {{ image }} --count 1 --instance-type {{ instance_type }} --key-name {{ ec2_key_name }} --security-group-ids {{ ec2_security_group.group_id }} --region {{ region }}"
+
+- name: Sleep for 60 seconds
+  pause:
+    seconds: 60
+
+- name: Get the IP address
+  shell: "aws ec2 describe-instances --region {{ region }} --query 'Reservations[*].Instances[*].[State.Name, InstanceId, PublicIpAddress]' --output text | grep running | awk '{print $3}'"
+  register: ec2_ip
+
+- name: Add the host
+  add_host:
+    name: "{{ ec2_ip.stdout }}"
+    groups: webservers
+
+- name: Wait for SSH to come up
+  wait_for:
+    host: "{{ ec2_ip.stdout }}"
+    port: 22
+    state: started
+
+- name: Copy the new ec2 ip to known_hosts
+  shell: "ssh-keyscan -H {{ ec2_ip.stdout }} >> ~/.ssh/known_hosts"
+

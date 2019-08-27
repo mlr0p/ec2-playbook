@@ -1,4 +1,8 @@
 ---
+- name: Create SSH directory if it does not exist
+  file:
+      path: ~/.ssh
+      state: directory
 
 - name: Create EC2 Keypair
   ec2_key:

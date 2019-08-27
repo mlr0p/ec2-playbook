@@ -1,0 +1,5 @@
+---
+- name: Terminate the Created EC2 Instance
+  hosts: localhost
+  roles:
+    - terminate-ec2

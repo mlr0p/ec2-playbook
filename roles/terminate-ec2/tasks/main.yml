@@ -1,0 +1,20 @@
+- name: Gather EC2 facts
+  ec2_instance_facts:
+    region: "{{ region }}"
+    filters:
+      "tag:webserver": "production"
+  register: ec2
+
+- name: Terminate EC2 Instances with the webserver tag
+  command: "aws ec2 terminate-instances --instance-ids {{ item.instance_id }} --region {{region }}"
+  with_items: "{{ ec2.instances }}"
+
+- name: Sleep for 60 seconds
+  pause:
+    seconds: 60
+
+- name: Delete the security group
+  command: "aws ec2 delete-security-group --group-name webservers_sg --region {{region }}"
+
+- name: Delete the ec2 keypair
+  command: "aws ec2 delete-key-pair --key-name climate-secret-key --region {{region }}"

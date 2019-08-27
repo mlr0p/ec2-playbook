@@ -38,7 +38,7 @@
   register: ec2_security_group
 
 - name: Launch EC2 Instance
-  command: "aws ec2 run-instances --image-id {{ image }} --count 1 --instance-type {{ instance_type }} --key-name {{ ec2_key_name }} --security-group-ids {{ ec2_security_group.group_id }} --region {{ region }}"
+  command: "aws ec2 run-instances --image-id {{ image }} --count 1 --instance-type {{ instance_type }} --key-name {{ ec2_key_name }} --security-group-ids {{ ec2_security_group.group_id }} --region {{ region }} --tag-specifications 'ResourceType=instance,Tags=[{Key=webserver,Value=production}]'"
 
 - name: Sleep for 60 seconds
   pause:

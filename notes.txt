@@ -1,8 +1,0 @@
-We can choose to configure our whole infrastructure by
-
-  ansible-playbook site.yml
-
-Or we can choose to run only our webserver
-
-  ansible-playbook site.yml --limit webserver
-  ansible-playbook webserver.yml

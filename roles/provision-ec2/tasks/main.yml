@@ -14,6 +14,9 @@
   copy: content="{{ ec2_key.key.private_key }}" dest="{{ ec2_private_key_dir }}" mode=0600
   when: ec2_key.changed
 
+- name: Enable EBS ecryption
+  command: "aws ec2 enable-ebs-encryption-by-default --region {{ region }}"
+
 - name: Create a security group
   ec2_group:
     name: "{{ security_group }}"
@@ -31,6 +34,10 @@
       - proto: tcp
         from_port: 443
         to_port: 443
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        from_port: 3000
+        to_port: 3000
         cidr_ip: 0.0.0.0/0
     rules_egress:
       - proto: all

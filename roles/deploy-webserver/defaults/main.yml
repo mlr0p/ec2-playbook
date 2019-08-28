@@ -1,4 +1,3 @@
 home_dir: /home/ubuntu
-backend: AWS-Full-Stack-Assignment
-frontend: AWS-Full-Stack-Assignment/client
+webapp: AWS-Full-Stack-Assignment
 

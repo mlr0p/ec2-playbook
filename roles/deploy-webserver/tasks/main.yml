@@ -14,50 +14,15 @@
 
 - name: Clone the web server repository
   become_user: ubuntu
-  git: repo=https://github.com/ErunaM/AWS-Full-Stack-Assignment.git dest={{ home_dir }}/{{ backend }} update=yes force=yes accept_hostkey=yes
+  git: repo=https://github.com/ErunaM/AWS-Full-Stack-Assignment.git dest={{ home_dir }}/{{ webapp }} update=yes force=yes accept_hostkey=yes
   register: git_done
 
-# Configure the Backend
-- name: Install Express for Backend
-  npm:
-    name: express
-    global: yes
-    state: present
-    path: "{{ home_dir }}/{{ backend }}"
-
-- name: Run the node server
-  shell: "(cd {{ home_dir }}/{{ backend }} ; node server.js > /dev/null 2>&1 &)"
-  async: 10
-  poll: 0
-
-# Configure the Frontend
-- name: Install React for Frontend
-  npm:
-    name: react
-    global: yes
-    state: present
-    path: "{{ home_dir }}/{{ frontend }}"
-
-- name: Install Serve for Frontend
-  npm:
-    name: serve
-    global: yes
-    state: present
-    path: "{{ home_dir }}/{{ frontend }}"
-
-- name: npm install
-  npm: path="{{ home_dir }}/{{ frontend}}"
-
-- name: Build the application
+- name: Run our web server stage 1
   become_user: ubuntu
-  command: npm run build
-  args:
-    chdir: "{{ home_dir }}/{{ frontend }}"
+  shell: "(cd {{ home_dir }}/{{ webapp }} ; npm run before)"
 
-- name: Run the node server
-  shell: "(cd {{ home_dir }}/{{ frontend }} ; serve -s build -l 80 > /dev/null 2>&1 &)"
-  async: 10
+- name: Run our web server stage 2
+  become_user: ubuntu
+  shell: "(cd {{ home_dir }}/{{ webapp }} ; npm run dev > /dev/null 2>&1 &)"
+  async: 60
   poll: 0
-  #command: serve -s build -l 80
-  #args:
-  #  chdir: "{{ home_dir }}/{{ webapp_name }}"

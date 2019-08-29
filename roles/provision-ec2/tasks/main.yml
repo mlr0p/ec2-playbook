@@ -45,27 +45,66 @@
   register: ec2_security_group
 
 - name: Launch EC2 Instance
-  command: "aws ec2 run-instances --image-id {{ image }} --count 1 --instance-type {{ instance_type }} --key-name {{ ec2_key_name }} --security-group-ids {{ ec2_security_group.group_id }} --region {{ region }} --tag-specifications 'ResourceType=instance,Tags=[{Key=webserver,Value=production}]'"
+  shell: "aws ec2 run-instances --image-id {{ image }} --count 1 --instance-type {{ instance_type }} --key-name {{ ec2_key_name }} --security-group-ids {{ ec2_security_group.group_id }} --region {{ region }} --tag-specifications 'ResourceType=instance,Tags=[{Key=webserver,Value=production}]'"
+  register: ec2_instance_out
+
+- set_fact:
+    ec2_instance: "{{ ec2_instance_out.stdout|from_json }}"
 
 - name: Sleep for 60 seconds
   pause:
     seconds: 60
 
-- name: Get the IP address
-  shell: "aws ec2 describe-instances --region {{ region }} --query 'Reservations[*].Instances[*].[State.Name, InstanceId, PublicIpAddress]' --output text | grep running | awk '{print $3}'"
-  register: ec2_ip
+- name: Find an existing Elastic IP
+  shell: "aws ec2 describe-addresses --region {{ region }}"
+  register: cur_elastic_ip_out
+
+- name: Get the existing Elastic IP in JSON
+  set_fact:
+    cur_elastic_ip: "{{ cur_elastic_ip_out.stdout|from_json }}"
+
+# if we have an existing elastic ip, use that
+- name: 
+  set_fact:
+    elastic_ip: "{{ cur_elastic_ip.Addresses[0] }}"
+  when:
+    cur_elastic_ip.Addresses[0].PublicIp is defined
+
+# if there is no existing elastic ip, allocate a new one
+
+- name: Allocate a new Elastic IP Address
+  shell: "aws ec2 allocate-address --region {{ region }}"
+  register: new_elastic_ip_out
+  when: 
+    cur_elastic_ip.Addresses[0].PublicIp is not defined
+
+- name: Get the new Elastic IP in JSON
+  set_fact:
+    new_elastic_ip: "{{ new_elastic_ip_out.stdout|from_json }}"
+  when: 
+    cur_elastic_ip.Addresses[0].PublicIp is not defined
+# if we don't have an existing elastic ip, set elastic_ip as the new one
+
+- name: Store the new Elastic IP Address
+  set_fact:
+    elastic_ip: "{{ new_elastic_ip.Addresses[0] }}"
+  when: 
+    cur_elastic_ip.Addresses[0].PublicIp is not defined
+
+- name: Associate the Elastic IP to the new EC2 instance
+  command: "aws ec2 associate-address --instance-id {{ ec2_instance.Instances[0].InstanceId }} --public-ip {{ elastic_ip.PublicIp }} --region {{ region }}"
 
 - name: Add the host
   add_host:
-    name: "{{ ec2_ip.stdout }}"
+    name: "{{ elastic_ip.PublicIp }}"
     groups: webservers
 
 - name: Wait for SSH to come up
   wait_for:
-    host: "{{ ec2_ip.stdout }}"
+    host: "{{ elastic_ip.PublicIp }}"
     port: 22
     state: started
 
 - name: Copy the new ec2 ip to known_hosts
-  shell: "ssh-keyscan -H {{ ec2_ip.stdout }} >> ~/.ssh/known_hosts"
+  shell: "ssh-keyscan -H {{ elastic_ip.PublicIp }} >> ~/.ssh/known_hosts"
 

@@ -17,6 +17,12 @@
   git: repo=https://github.com/ErunaM/AWS-Full-Stack-Assignment.git dest={{ home_dir }}/{{ webapp }} update=yes force=yes accept_hostkey=yes
   register: git_done
 
+- name: Redirect port 80 traffic to port 3000
+  shell: "iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 3000"
+
+- name: Redirect port 443 traffic to port 3000
+  shell: "iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 3000"
+
 - name: Run our web server stage 1
   become_user: ubuntu
   shell: "(cd {{ home_dir }}/{{ webapp }} ; npm run before)"
